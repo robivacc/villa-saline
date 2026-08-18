@@ -27,13 +27,13 @@ const ENTRY_TYPES = ["Costo","Altro Ricavo"];
 // Calcola il riepilogo finanziario di una prenotazione.
 // Commissione € e Cedolare € sono INPUT MANUALI; le % sono calcolate automaticamente per riferimento.
 function calcNet(b){
-  const gross = Number(b.grossPrice)||0;
-  const cleaning = Number(b.cleaningFee)||0;
-  const extra = Number(b.extraFee)||0;
-  const discount = Number(b.discount)||0;
-  const touristTax = Number(b.touristTax)||0;
-  const commEur = Number(b.commissionEur)||0;
-  const cedolareEur = Number(b.cedolareEur)||0;
+  const gross = toNum(b.grossPrice);
+  const cleaning = toNum(b.cleaningFee);
+  const extra = toNum(b.extraFee);
+  const discount = toNum(b.discount);
+  const touristTax = toNum(b.touristTax);
+  const commEur = toNum(b.commissionEur);
+  const cedolareEur = toNum(b.cedolareEur);
   const taxableBase = gross+extra-discount;
   const commPct = gross>0 ? commEur/gross : 0;
   const cedolarePct = taxableBase>0 ? cedolareEur/taxableBase : 0;
@@ -187,13 +187,13 @@ export default function AdminApp(){
       guest_name: bkForm.guestName,
       guests_count: bkForm.guests,
       channel: bkForm.channel,
-      gross_price: bkForm.grossPrice,
-      cleaning_fee: bkForm.cleaningFee,
-      extra_fee: bkForm.extraFee,
-      discount: bkForm.discount,
-      tourist_tax: bkForm.touristTax,
-      commission_eur: bkForm.commissionEur,
-      cedolare_eur: bkForm.cedolareEur,
+      gross_price: toNum(bkForm.grossPrice),
+      cleaning_fee: toNum(bkForm.cleaningFee),
+      extra_fee: toNum(bkForm.extraFee),
+      discount: toNum(bkForm.discount),
+      tourist_tax: toNum(bkForm.touristTax),
+      commission_eur: toNum(bkForm.commissionEur),
+      cedolare_eur: toNum(bkForm.cedolareEur),
       status: bkForm.status,
       payment_status: bkForm.paymentStatus,
       booking_date: bkForm.bookingDate || toI(today),
@@ -250,10 +250,10 @@ export default function AdminApp(){
     // Suggerisce commissione e cedolare quando cambia canale, lordo, extra o sconto — ma solo se non modificate a mano dall'utente in questa sessione di editing
     if((u.channel!==undefined||u.grossPrice!==undefined||u.extraFee!==undefined||u.discount!==undefined) && !n._manualComm){
       const suggestedRate = CR[n.channel]||0;
-      n.commissionEur = Math.round((n.grossPrice||0)*suggestedRate*100)/100;
+      n.commissionEur = Math.round(toNum(n.grossPrice)*suggestedRate*100)/100;
     }
     if((u.grossPrice!==undefined||u.extraFee!==undefined||u.discount!==undefined) && !n._manualCedolare){
-      const base=(n.grossPrice||0)+(n.extraFee||0)-(n.discount||0);
+      const base=toNum(n.grossPrice)+toNum(n.extraFee)-toNum(n.discount);
       n.cedolareEur = Math.round(base*CEDOLARE_PCT*100)/100;
     }
     if(u.commissionEur!==undefined) n._manualComm=true;
@@ -588,22 +588,22 @@ export default function AdminApp(){
                 <label style={LS}>OSPITI<input type="number" value={bkForm.guests} min="1" max="12" onChange={e=>updBk({guests:parseInt(e.target.value)||1})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8}}>
-                <label style={LS}>PREZZO LORDO €<input type="text" inputMode="decimal" value={bkForm.grossPrice} onChange={e=>updBk({grossPrice:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/></label>
-                <label style={LS}>CLEANING €<input type="text" inputMode="decimal" value={bkForm.cleaningFee} onChange={e=>updBk({cleaningFee:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>PREZZO LORDO €<input type="text" inputMode="decimal" value={bkForm.grossPrice} onChange={e=>updBk({grossPrice:e.target.value})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>CLEANING €<input type="text" inputMode="decimal" value={bkForm.cleaningFee} onChange={e=>updBk({cleaningFee:e.target.value})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <label style={LS}>EXTRA €<input type="text" inputMode="decimal" value={bkForm.extraFee} onChange={e=>updBk({extraFee:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/></label>
-                <label style={LS}>SCONTO €<input type="text" inputMode="decimal" value={bkForm.discount} onChange={e=>updBk({discount:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>EXTRA €<input type="text" inputMode="decimal" value={bkForm.extraFee} onChange={e=>updBk({extraFee:e.target.value})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>SCONTO €<input type="text" inputMode="decimal" value={bkForm.discount} onChange={e=>updBk({discount:e.target.value})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <label style={LS}>TASSA SOGGIORNO € <span style={{opacity:0.6}}>(auto: notti × ospiti × €2)</span>
-                <input type="text" inputMode="decimal" value={bkForm.touristTax} onChange={e=>updBk({touristTax:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/>
+                <input type="text" inputMode="decimal" value={bkForm.touristTax} onChange={e=>updBk({touristTax:e.target.value})} onFocus={e=>e.target.select()} style={IS}/>
               </label>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <label style={LS}>COMMISSIONE € <span style={{opacity:0.6}}>({bkForm.grossPrice>0?((bkForm.commissionEur/bkForm.grossPrice)*100).toFixed(1):"0.0"}%)</span>
-                  <input type="text" inputMode="decimal" value={bkForm.commissionEur} onChange={e=>updBk({commissionEur:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/>
+                <label style={LS}>COMMISSIONE € <span style={{opacity:0.6}}>({toNum(bkForm.grossPrice)>0?((toNum(bkForm.commissionEur)/toNum(bkForm.grossPrice))*100).toFixed(1):"0.0"}%)</span>
+                  <input type="text" inputMode="decimal" value={bkForm.commissionEur} onChange={e=>updBk({commissionEur:e.target.value})} onFocus={e=>e.target.select()} style={IS}/>
                 </label>
-                <label style={LS}>CEDOLARE SECCA € <span style={{opacity:0.6}}>({(bkForm.grossPrice+bkForm.extraFee-bkForm.discount)>0?((bkForm.cedolareEur/(bkForm.grossPrice+bkForm.extraFee-bkForm.discount))*100).toFixed(1):"0.0"}%)</span>
-                  <input type="text" inputMode="decimal" value={bkForm.cedolareEur} onChange={e=>updBk({cedolareEur:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/>
+                <label style={LS}>CEDOLARE SECCA € <span style={{opacity:0.6}}>({(toNum(bkForm.grossPrice)+toNum(bkForm.extraFee)-toNum(bkForm.discount))>0?((toNum(bkForm.cedolareEur)/(toNum(bkForm.grossPrice)+toNum(bkForm.extraFee)-toNum(bkForm.discount)))*100).toFixed(1):"0.0"}%)</span>
+                  <input type="text" inputMode="decimal" value={bkForm.cedolareEur} onChange={e=>updBk({cedolareEur:e.target.value})} onFocus={e=>e.target.select()} style={IS}/>
                 </label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
