@@ -20,6 +20,24 @@ const UC = {"Casa Grande":"#3B7DD8","Casa Piccola":"#D4764E","Villa Intera":"#9B
 const CI2 = {Privato:"👤",Airbnb:"🏠","Booking.com":"🅱️",Expedia:"✈️",Altro:"📋"};
 const CR = {Privato:0,Airbnb:0.03,"Booking.com":0.15,Expedia:0.15,Altro:0.10};
 const DC = {"Casa Grande":80,"Casa Piccola":50,"Villa Intera":120};
+const CEDOLARE_PCT = 0.21;
+const TOURIST_TAX_RATE = 2;
+const ENTRY_TYPES = ["Costo","Altro Ricavo"];
+
+// Calcola il riepilogo finanziario di una prenotazione secondo la formula:
+// (+) Lordo (+) Extra (-) Sconto (+) Tassa Soggiorno (-) Commissione (-) Cedolare secca (=) Netto
+function calcNet(b){
+  const gross = Number(b.grossPrice)||0;
+  const extra = Number(b.extraFee)||0;
+  const discount = Number(b.discount)||0;
+  const touristTax = Number(b.touristTax)||0;
+  const commPct = CR[b.channel]||0;
+  const commEur = gross*commPct;
+  const taxableBase = gross+extra-discount;
+  const cedolareEur = taxableBase*CEDOLARE_PCT;
+  const net = gross+extra-discount+touristTax-commEur-cedolareEur;
+  return {gross,extra,discount,touristTax,commPct,commEur,cedolareEur,net};
+}
 
 function dim(y,m){return new Date(y,m+1,0).getDate();}
 function pD(s){if(!s)return null;const d=new Date(s+"T00:00:00");return isNaN(d)?null:d;}
@@ -27,8 +45,8 @@ function toI(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0
 function fI(s){const d=pD(s);if(!d)return"";return`${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;}
 function nC(a,b){const d1=pD(a),d2=pD(b);if(!d1||!d2)return 0;return Math.round((d2-d1)/864e5);}
 
-const EMPTY_BK = {id:"",property_id:"",check_in:"",check_out:"",unit:"Casa Grande",channel:"Airbnb",guest_name:"",guests_count:2,gross_price:0,cleaning_fee:80,extra_fee:0,discount:0,status:"Confermata",payment_status:"In attesa",notes:"",booking_date:""};
-const EMPTY_CO = {id:"",date:"",category:"Pulizie",subcategory:"",supplier:"",unit:"Generale",amount:0,vat_pct:0,recurrence:"Una Tantum",payment_method:"Bonifico",notes:""};
+const EMPTY_BK = {id:"",property_id:"",check_in:"",check_out:"",unit:"Casa Grande",channel:"Airbnb",guest_name:"",guests_count:2,gross_price:0,cleaning_fee:80,extra_fee:0,discount:0,touristTax:0,status:"Confermata",payment_status:"In attesa",notes:"",booking_date:""};
+const EMPTY_CO = {id:"",date:"",category:"Pulizie",subcategory:"",supplier:"",unit:"Generale",amount:0,vat_pct:0,recurrence:"Una Tantum",payment_method:"Bonifico",notes:"",entryType:"Costo"};
 
 const IS={display:"block",width:"100%",padding:"10px",marginTop:3,background:"rgba(15,26,46,0.8)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:6,color:"#E8E0D0",fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
 const LS={fontSize:10,color:"#777",letterSpacing:0.5,display:"block"};
@@ -70,11 +88,11 @@ export default function AdminApp(){
       ...b, unit: (props||[]).find(p=>p.id===b.property_id)?.name || "Casa Grande",
       guestName:b.guest_name, checkIn:b.check_in, checkOut:b.check_out, guests:b.guests_count,
       grossPrice:Number(b.gross_price), cleaningFee:Number(b.cleaning_fee), extraFee:Number(b.extra_fee),
-      discount:Number(b.discount), paymentStatus:b.payment_status, bookingDate:b.booking_date
+      discount:Number(b.discount), touristTax:Number(b.tourist_tax||0), paymentStatus:b.payment_status, bookingDate:b.booking_date
     })));
     const { data: costs } = await supabase.from("costs").select("*").order("date",{ascending:false});
     setCo((costs||[]).map(c=>({
-      ...c, vatPct:Number(c.vat_pct), amount:Number(c.amount), payMethod:c.payment_method
+      ...c, vatPct:Number(c.vat_pct), amount:Number(c.amount), payMethod:c.payment_method, entryType:c.entry_type||"Costo"
     })));
     setLoading(false);
   }, []);
@@ -135,7 +153,7 @@ export default function AdminApp(){
   const avail=days*2;
   const occ=avail>0?Math.round(nSold/avail*100):0;
   const mRev=confMonth.reduce((s,b)=>s+(b.grossPrice||0),0);
-  const mCost=co.filter(c=>{const d=pD(c.date);return d&&d.getFullYear()===yr&&d.getMonth()===mo;}).reduce((s,c)=>s+(c.amount||0),0);
+  const mCost=co.filter(c=>{const d=pD(c.date);return d&&d.getFullYear()===yr&&d.getMonth()===mo&&c.entryType!=="Altro Ricavo";}).reduce((s,c)=>s+(c.amount||0),0);
 
   const firstDow=(new Date(yr,mo,1).getDay()+6)%7;
   const gridCells=[];
@@ -164,6 +182,7 @@ export default function AdminApp(){
       cleaning_fee: bkForm.cleaningFee,
       extra_fee: bkForm.extraFee,
       discount: bkForm.discount,
+      tourist_tax: bkForm.touristTax,
       status: bkForm.status,
       payment_status: bkForm.paymentStatus,
       booking_date: bkForm.bookingDate || toI(today),
@@ -193,6 +212,7 @@ export default function AdminApp(){
       supplier: coForm.supplier, unit: coForm.unit,
       amount: parseFloat(coForm.amount)||0, vat_pct: parseFloat(coForm.vatPct)||0,
       recurrence: coForm.recurrence, payment_method: coForm.payMethod, notes: coForm.notes,
+      entry_type: coForm.entryType||"Costo",
     };
     if(editCoId){
       await supabase.from("costs").update(payload).eq("id", editCoId);
@@ -209,7 +229,15 @@ export default function AdminApp(){
     setShowCoForm(false);
   };
 
-  const updBk=(u)=>{const n={...bkForm,...u};if(u.unit&&!editBkId)n.cleaningFee=DC[u.unit]||80;setBkForm(n);};
+  const updBk=(u)=>{
+    const n={...bkForm,...u};
+    if(u.unit&&!editBkId)n.cleaningFee=DC[u.unit]||80;
+    if(u.checkIn!==undefined||u.checkOut!==undefined||u.guests!==undefined){
+      const nights=nC(n.checkIn,n.checkOut);
+      if(nights>0&&n.guests>0) n.touristTax = nights*n.guests*TOURIST_TAX_RATE;
+    }
+    setBkForm(n);
+  };
 
   const filtBk=bk.filter(b=>{
     if(fUnit!=="Tutte"&&b.unit!==fUnit)return false;
@@ -239,19 +267,30 @@ export default function AdminApp(){
 
   const exportBk=()=>{
     const src=tab==="bk"?filtBk:bk;
-    const h=["Booking ID","Data Prenotazione","Check-in","Check-out","Notti","Mese","Anno","Unità","Canale","Nome Ospite","N. Ospiti","Prezzo Lordo","Cleaning Fee","Extra Fee","Sconto","Commissione %","Commissione €","Ricavo Netto","Stato Pagamento","Stato Prenotazione","Note"];
-    const rows=src.map(b=>{const n=nC(b.checkIn,b.checkOut);const ci=pD(b.checkIn);const cr=CR[b.channel]||0;const cE=b.grossPrice*cr;const net=b.grossPrice+b.cleaningFee+b.extraFee-b.discount-cE;return[b.id,fI(b.bookingDate),fI(b.checkIn),fI(b.checkOut),n,ci?ci.getMonth()+1:"",ci?ci.getFullYear():"",b.unit,b.channel,b.guestName,b.guests,b.grossPrice,b.cleaningFee,b.extraFee,b.discount,(cr*100).toFixed(1)+"%",cE.toFixed(2),net.toFixed(2),b.paymentStatus,b.status,b.notes].map(v=>`"${v}"`).join(";");});
+    const h=["Booking ID","Data Prenotazione","Check-in","Check-out","Notti","Mese","Anno","Unità","Canale","Nome Ospite","N. Ospiti","Prezzo Lordo","Cleaning Fee","Extra Fee","Sconto","Tassa Soggiorno","Commissione %","Commissione €","Cedolare Secca %","Cedolare Secca €","Ricavo Netto","Stato Pagamento","Stato Prenotazione","Note"];
+    const rows=src.map(b=>{
+      const n=nC(b.checkIn,b.checkOut);const ci=pD(b.checkIn);
+      const {gross,extra,discount,touristTax,commPct,commEur,cedolareEur,net}=calcNet(b);
+      return[b.id,fI(b.bookingDate),fI(b.checkIn),fI(b.checkOut),n,ci?ci.getMonth()+1:"",ci?ci.getFullYear():"",b.unit,b.channel,b.guestName,b.guests,gross,b.cleaningFee,extra,discount,touristTax.toFixed(2),(commPct*100).toFixed(1)+"%",commEur.toFixed(2),"21%",cedolareEur.toFixed(2),net.toFixed(2),b.paymentStatus,b.status,b.notes].map(v=>`"${v}"`).join(";");
+    });
     dl("\uFEFF"+h.join(";")+"\n"+rows.join("\n"),`VillaSaline_Bookings_${yr}.csv`);
   };
   const exportCo=()=>{
-    const h=["ID Costo","Data","Mese","Anno","Categoria","Sottocategoria","Fornitore","Unità","Importo Lordo","IVA %","IVA €","Importo Netto","Ricorrente/Una Tantum","Metodo Pagamento","Note"];
-    const rows=(tab==="co"?filtCo:co).map(c=>{const d=pD(c.date);const iva=c.amount*(c.vatPct||0);return[c.id,fI(c.date),d?d.getMonth()+1:"",d?d.getFullYear():"",c.category,c.subcategory,c.supplier,c.unit,c.amount,(c.vatPct*100).toFixed(0)+"%",iva.toFixed(2),(c.amount-iva).toFixed(2),c.recurrence,c.payMethod,c.notes].map(v=>`"${v}"`).join(";");});
+    const h=["ID","Tipo","Data","Mese","Anno","Categoria","Sottocategoria","Fornitore","Unità","Importo","IVA %","IVA €","Importo Netto","Ricorrente/Una Tantum","Metodo Pagamento","Note"];
+    const rows=(tab==="co"?filtCo:co).map(c=>{const d=pD(c.date);const iva=c.amount*(c.vatPct||0);return[c.id,c.entryType||"Costo",fI(c.date),d?d.getMonth()+1:"",d?d.getFullYear():"",c.category,c.subcategory,c.supplier,c.unit,c.amount,(c.vatPct*100).toFixed(0)+"%",iva.toFixed(2),(c.amount-iva).toFixed(2),c.recurrence,c.payMethod,c.notes].map(v=>`"${v}"`).join(";");});
     dl("\uFEFF"+h.join(";")+"\n"+rows.join("\n"),`VillaSaline_Costi_${yr}.csv`);
   };
   const dl=(csv,name)=>{const b=new Blob([csv],{type:"text/csv;charset=utf-8;"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);};
 
   const BkCard=({b,exp,onTog})=>{
-    const n=nC(b.checkIn,b.checkOut),c=SC[b.status],cr=CR[b.channel]||0,cE=b.grossPrice*cr,net=b.grossPrice+b.cleaningFee+b.extraFee-b.discount-cE;
+    const n=nC(b.checkIn,b.checkOut),c=SC[b.status];
+    const {gross,extra,discount,touristTax,commPct,commEur,cedolareEur,net}=calcNet(b);
+    const row=(label,val,sign)=>(
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"2px 0"}}>
+        <span style={{color:"#888"}}>{sign} {label}</span>
+        <span style={{color:"#E8E0D0"}}>€{val.toFixed(2)}</span>
+      </div>
+    );
     return(
       <div onClick={onTog} style={{background:"rgba(26,39,68,0.5)",borderRadius:10,padding:"10px 12px",marginBottom:6,borderLeft:`3px solid ${c.br}`,cursor:"pointer",border:exp?`1px solid ${c.br}`:"1px solid rgba(255,255,255,0.04)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
@@ -272,13 +311,23 @@ export default function AdminApp(){
         </div>
         {exp&&(
           <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.05)"}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,fontSize:11,marginBottom:6}}>
-              {[{l:"ADR",v:`€${n>0?Math.round(b.grossPrice/n):0}`},{l:"COMM",v:`€${cE.toFixed(0)} (${(cr*100).toFixed(0)}%)`},{l:"NETTO",v:`€${net.toFixed(0)}`,c:"#3DA66A"}].map((x,i)=>(
-                <div key={i} style={{background:"rgba(15,26,46,0.5)",borderRadius:5,padding:"5px 6px",textAlign:"center"}}>
-                  <div style={{color:"#666",fontSize:8,marginBottom:1}}>{x.l}</div>
-                  <div style={{color:x.c||"#E8E0D0",fontWeight:500}}>{x.v}</div>
-                </div>
-              ))}
+            <div style={{background:"rgba(15,26,46,0.5)",borderRadius:6,padding:"8px 10px",marginBottom:8}}>
+              {row("Prezzo Lordo",gross,"+")}
+              {row("Extra Fee",extra,"+")}
+              {row("Sconto",discount,"−")}
+              {row("Tassa Soggiorno",touristTax,"+")}
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"2px 0"}}>
+                <span style={{color:"#888"}}>− Commissione ({(commPct*100).toFixed(0)}%)</span>
+                <span style={{color:"#E8E0D0"}}>€{commEur.toFixed(2)}</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"2px 0"}}>
+                <span style={{color:"#888"}}>− Cedolare secca (21%)</span>
+                <span style={{color:"#E8E0D0"}}>€{cedolareEur.toFixed(2)}</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,paddingTop:5,marginTop:5,borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+                <span style={{color:"#C9A96E",fontWeight:500}}>= Ricavo Netto</span>
+                <span style={{color:"#3DA66A",fontWeight:700}}>€{net.toFixed(2)}</span>
+              </div>
             </div>
             {b.notes&&<div style={{fontSize:10,color:"#888",marginBottom:6}}>📝 <span style={{color:"#C9A96E"}}>{b.notes}</span></div>}
             <div style={{display:"flex",gap:6}}>
@@ -429,26 +478,36 @@ export default function AdminApp(){
         <div style={{display:"flex",gap:5,padding:"4px 14px 8px",overflowX:"auto"}}>
           {["Tutte","Pulizie","Lavanderia","Utilities","Manutenzione","Marketing","Altro"].map(c=>(<button key={c} onClick={()=>setCoFCat(c)} style={{...pill,...(coFCat===c?{background:"rgba(201,169,110,0.12)",borderColor:"rgba(201,169,110,0.35)",color:"#C9A96E"}:{})}}>{c}</button>))}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",padding:"0 14px 10px",gap:6}}>
-          {[{l:"TOTALE",v:`€${filtCo.reduce((s,c)=>s+c.amount,0).toLocaleString("it-IT")}`},{l:"RICORRENTI",v:`€${filtCo.filter(c=>c.recurrence==="Ricorrente").reduce((s,c)=>s+c.amount,0).toLocaleString("it-IT")}`},{l:"UNA TANTUM",v:`€${filtCo.filter(c=>c.recurrence==="Una Tantum").reduce((s,c)=>s+c.amount,0).toLocaleString("it-IT")}`}].map((x,i)=>(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",padding:"0 14px 10px",gap:6}}>
+          {[
+            {l:"COSTI",v:`€${filtCo.filter(c=>c.entryType!=="Altro Ricavo").reduce((s,c)=>s+c.amount,0).toLocaleString("it-IT")}`,c:"#ED7D31"},
+            {l:"ALTRI RICAVI",v:`€${filtCo.filter(c=>c.entryType==="Altro Ricavo").reduce((s,c)=>s+c.amount,0).toLocaleString("it-IT")}`,c:"#3DA66A"},
+            {l:"RICORRENTI",v:`€${filtCo.filter(c=>c.recurrence==="Ricorrente"&&c.entryType!=="Altro Ricavo").reduce((s,c)=>s+c.amount,0).toLocaleString("it-IT")}`},
+            {l:"UNA TANTUM",v:`€${filtCo.filter(c=>c.recurrence==="Una Tantum"&&c.entryType!=="Altro Ricavo").reduce((s,c)=>s+c.amount,0).toLocaleString("it-IT")}`},
+          ].map((x,i)=>(
             <div key={i} style={{background:"rgba(26,39,68,0.45)",borderRadius:7,padding:"6px 4px",textAlign:"center",border:"1px solid rgba(201,169,110,0.05)"}}>
-              <div style={{fontSize:8,letterSpacing:1,color:"#C9A96E",opacity:0.5}}>{x.l}</div>
-              <div style={{fontSize:14,fontWeight:300,color:"#E8E0D0",marginTop:1}}>{x.v}</div>
+              <div style={{fontSize:7,letterSpacing:1,color:"#C9A96E",opacity:0.5}}>{x.l}</div>
+              <div style={{fontSize:13,fontWeight:300,color:x.c||"#E8E0D0",marginTop:1}}>{x.v}</div>
             </div>
           ))}
         </div>
         <div style={{padding:"0 14px 16px"}}>
           {filtCo.map(c=>{
             const iva=c.amount*(c.vatPct||0);
+            const isRicavo=c.entryType==="Altro Ricavo";
+            const clr=isRicavo?"#3DA66A":"#ED7D31";
             return(
-              <div key={c.id} onClick={()=>setSelId(selId===c.id?null:c.id)} style={{background:"rgba(26,39,68,0.5)",borderRadius:10,padding:"10px 12px",marginBottom:6,borderLeft:`3px solid #ED7D31`,cursor:"pointer",border:selId===c.id?"1px solid #ED7D31":"1px solid rgba(255,255,255,0.04)"}}>
+              <div key={c.id} onClick={()=>setSelId(selId===c.id?null:c.id)} style={{background:"rgba(26,39,68,0.5)",borderRadius:10,padding:"10px 12px",marginBottom:6,borderLeft:`3px solid ${clr}`,cursor:"pointer",border:selId===c.id?`1px solid ${clr}`:"1px solid rgba(255,255,255,0.04)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div>
-                    <div style={{fontSize:13,fontWeight:500,color:"#E8E0D0"}}>{c.category}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:5}}>
+                      <span style={{fontSize:13,fontWeight:500,color:"#E8E0D0"}}>{c.category}</span>
+                      {isRicavo&&<span style={{fontSize:8,padding:"2px 5px",borderRadius:3,background:"rgba(45,122,79,0.25)",color:"#6FCF8E"}}>RICAVO</span>}
+                    </div>
                     <div style={{fontSize:10,color:"#888",marginTop:2}}>{c.subcategory&&<span>{c.subcategory} · </span>}{c.supplier&&<span>{c.supplier} · </span>}{fI(c.date)}</div>
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:14,fontWeight:400,color:"#ED7D31"}}>€{Number(c.amount).toLocaleString("it-IT")}</div>
+                    <div style={{fontSize:14,fontWeight:400,color:clr}}>{isRicavo?"+":""}€{Number(c.amount).toLocaleString("it-IT")}</div>
                     <div style={{fontSize:9,color:"#666"}}>{c.unit}</div>
                   </div>
                 </div>
@@ -513,16 +572,37 @@ export default function AdminApp(){
                 <label style={LS}>EXTRA €<input type="number" value={bkForm.extraFee} min="0" onChange={e=>updBk({extraFee:parseFloat(e.target.value)||0})} style={IS}/></label>
                 <label style={LS}>SCONTO €<input type="number" value={bkForm.discount} min="0" onChange={e=>updBk({discount:parseFloat(e.target.value)||0})} style={IS}/></label>
               </div>
+              <label style={LS}>TASSA SOGGIORNO € <span style={{opacity:0.6}}>(auto: notti × ospiti × €2)</span>
+                <input type="number" value={bkForm.touristTax} min="0" onChange={e=>updBk({touristTax:parseFloat(e.target.value)||0})} style={IS}/>
+              </label>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>STATO<select value={bkForm.status} onChange={e=>updBk({status:e.target.value})} style={IS}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select></label>
                 <label style={LS}>PAGAMENTO<select value={bkForm.paymentStatus} onChange={e=>updBk({paymentStatus:e.target.value})} style={IS}>{PAY_ST.map(s=><option key={s}>{s}</option>)}</select></label>
               </div>
               <label style={LS}>NOTE<input value={bkForm.notes} placeholder="Note opzionali" onChange={e=>updBk({notes:e.target.value})} style={IS}/></label>
               {bkForm.checkIn&&bkForm.checkOut&&bkForm.grossPrice>0&&(()=>{
-                const n=nC(bkForm.checkIn,bkForm.checkOut),cr=CR[bkForm.channel]||0,cE=bkForm.grossPrice*cr,net=bkForm.grossPrice+bkForm.cleaningFee+bkForm.extraFee-bkForm.discount-cE;
-                return(<div style={{background:"rgba(201,169,110,0.06)",borderRadius:7,padding:"7px 10px",border:"1px solid rgba(201,169,110,0.1)"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#C9A96E",marginBottom:3}}><span>{n}n · €{n>0?Math.round(bkForm.grossPrice/n):0}/notte</span><span>Comm: €{cE.toFixed(0)} ({(cr*100).toFixed(0)}%)</span></div>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:"#888"}}>Netto incassato:</span><span style={{color:"#3DA66A",fontWeight:600}}>€{net.toFixed(0)}</span></div>
+                const {gross,extra,discount,touristTax,commPct,commEur,cedolareEur,net}=calcNet(bkForm);
+                const n=nC(bkForm.checkIn,bkForm.checkOut);
+                const frow=(label,val,sign)=>(
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"1px 0"}}>
+                    <span style={{color:"#888"}}>{sign} {label}</span><span style={{color:"#E8E0D0"}}>€{val.toFixed(2)}</span>
+                  </div>
+                );
+                return(<div style={{background:"rgba(201,169,110,0.06)",borderRadius:7,padding:"9px 11px",border:"1px solid rgba(201,169,110,0.1)"}}>
+                  <div style={{fontSize:10,color:"#C9A96E",marginBottom:5,opacity:0.8}}>{n} notti · €{n>0?Math.round(gross/n):0}/notte</div>
+                  {frow("Prezzo Lordo",gross,"+")}
+                  {frow("Extra Fee",extra,"+")}
+                  {frow("Sconto",discount,"−")}
+                  {frow("Tassa Soggiorno",touristTax,"+")}
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"1px 0"}}>
+                    <span style={{color:"#888"}}>− Commissione ({(commPct*100).toFixed(0)}%)</span><span style={{color:"#E8E0D0"}}>€{commEur.toFixed(2)}</span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"1px 0"}}>
+                    <span style={{color:"#888"}}>− Cedolare secca (21%)</span><span style={{color:"#E8E0D0"}}>€{cedolareEur.toFixed(2)}</span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:13,paddingTop:5,marginTop:5,borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+                    <span style={{color:"#C9A96E",fontWeight:500}}>= Ricavo Netto</span><span style={{color:"#3DA66A",fontWeight:700}}>€{net.toFixed(2)}</span>
+                  </div>
                 </div>);
               })()}
               <button onClick={doBkSave} disabled={!bkForm.checkIn||!bkForm.checkOut||!bkForm.guestName} style={{...saveBtn,background:(!bkForm.checkIn||!bkForm.checkOut||!bkForm.guestName)?"rgba(201,169,110,0.15)":"linear-gradient(135deg,#C9A96E,#A88840)",color:(!bkForm.checkIn||!bkForm.checkOut||!bkForm.guestName)?"#555":"#0C1525"}}>{editBkId?"SALVA MODIFICHE":"AGGIUNGI PRENOTAZIONE"}</button>
@@ -535,8 +615,20 @@ export default function AdminApp(){
         <div style={overlay} onClick={()=>setShowCoForm(false)}>
           <div onClick={e=>e.stopPropagation()} style={modal}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontSize:14,fontWeight:500,color:"#ED7D31"}}>{editCoId?"✏️ Modifica Costo":"➕ Nuovo Costo"}</div>
+              <div style={{fontSize:14,fontWeight:500,color:coForm.entryType==="Altro Ricavo"?"#3DA66A":"#ED7D31"}}>{editCoId?"✏️ Modifica":coForm.entryType==="Altro Ricavo"?"➕ Nuovo Ricavo":"➕ Nuovo Costo"}</div>
               <button onClick={()=>setShowCoForm(false)} style={closeBtn}>✕</button>
+            </div>
+            <div style={{display:"flex",gap:5,marginBottom:10}}>
+              {ENTRY_TYPES.map(t=>{
+                const active=coForm.entryType===t;
+                const clr=t==="Altro Ricavo"?"#3DA66A":"#ED7D31";
+                return(
+                  <button key={t} onClick={()=>setCoForm({...coForm,entryType:t})} style={{
+                    flex:1,padding:"8px 4px",borderRadius:7,fontSize:11,cursor:"pointer",textAlign:"center",
+                    border:"2px solid",...(active?{background:`${clr}20`,borderColor:clr,color:clr}:{background:"transparent",borderColor:"rgba(255,255,255,0.06)",color:"#555"})
+                  }}>{t}</button>
+                );
+              })}
             </div>
             <div style={{display:"grid",gap:8}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -558,7 +650,9 @@ export default function AdminApp(){
               </div>
               <label style={LS}>NOTE<input value={coForm.notes} placeholder="Note opzionali" onChange={e=>setCoForm({...coForm,notes:e.target.value})} style={IS}/></label>
               {coForm.amount>0&&(<div style={{background:"rgba(237,125,49,0.06)",borderRadius:7,padding:"7px 10px",border:"1px solid rgba(237,125,49,0.1)",display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:"#888"}}>IVA: €{(parseFloat(coForm.amount)*(coForm.vatPct||0)).toFixed(2)}</span><span style={{color:"#ED7D31",fontWeight:500}}>Netto: €{(parseFloat(coForm.amount)*(1-(coForm.vatPct||0))).toFixed(2)}</span></div>)}
-              <button onClick={doCoSave} disabled={!coForm.date||!coForm.amount} style={{...saveBtn,background:(!coForm.date||!coForm.amount)?"rgba(237,125,49,0.15)":"linear-gradient(135deg,#ED7D31,#C66A20)",color:(!coForm.date||!coForm.amount)?"#555":"#0C1525"}}>{editCoId?"SALVA MODIFICHE":"AGGIUNGI COSTO"}</button>
+              <button onClick={doCoSave} disabled={!coForm.date||!coForm.amount} style={{...saveBtn,
+                background:(!coForm.date||!coForm.amount)?"rgba(150,150,150,0.15)":coForm.entryType==="Altro Ricavo"?"linear-gradient(135deg,#3DA66A,#2D7A4F)":"linear-gradient(135deg,#ED7D31,#C66A20)",
+                color:(!coForm.date||!coForm.amount)?"#555":"#0C1525"}}>{editCoId?"SALVA MODIFICHE":coForm.entryType==="Altro Ricavo"?"AGGIUNGI RICAVO":"AGGIUNGI COSTO"}</button>
             </div>
           </div>
         </div>
