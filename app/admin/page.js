@@ -180,6 +180,10 @@ export default function AdminApp(){
   const doBkSave=async()=>{
     if(!bkForm.checkIn||!bkForm.checkOut||!bkForm.guestName)return;
     const propId = unitNameToId(bkForm.unit);
+    if(!propId){
+      alert("Errore: unità '"+bkForm.unit+"' non trovata nel database. Ricarica la pagina e riprova.");
+      return;
+    }
     const payload = {
       property_id: propId,
       check_in: bkForm.checkIn,
@@ -199,17 +203,24 @@ export default function AdminApp(){
       booking_date: bkForm.bookingDate || toI(today),
       notes: bkForm.notes,
     };
+    let error;
     if(editBkId){
-      await supabase.from("bookings").update(payload).eq("id", editBkId);
+      ({error} = await supabase.from("bookings").update(payload).eq("id", editBkId));
     } else {
-      await supabase.from("bookings").insert(payload);
+      ({error} = await supabase.from("bookings").insert(payload));
+    }
+    if(error){
+      alert("Errore nel salvataggio:\n"+error.message);
+      console.error("Supabase error:", error);
+      return;
     }
     setMsg("✓"); setTimeout(()=>setMsg(""),1500);
     await loadAll();
     setShowBkForm(false);
   };
   const doBkDel=async(id)=>{
-    await supabase.from("bookings").delete().eq("id", id);
+    const {error} = await supabase.from("bookings").delete().eq("id", id);
+    if(error){ alert("Errore nell'eliminazione:\n"+error.message); return; }
     await loadAll();
     setSelId(null);setShowBkForm(false);
   };
@@ -225,17 +236,24 @@ export default function AdminApp(){
       recurrence: coForm.recurrence, payment_method: coForm.payMethod, notes: coForm.notes,
       entry_type: coForm.entryType||"Costo",
     };
+    let error;
     if(editCoId){
-      await supabase.from("costs").update(payload).eq("id", editCoId);
+      ({error} = await supabase.from("costs").update(payload).eq("id", editCoId));
     } else {
-      await supabase.from("costs").insert(payload);
+      ({error} = await supabase.from("costs").insert(payload));
+    }
+    if(error){
+      alert("Errore nel salvataggio:\n"+error.message);
+      console.error("Supabase error:", error);
+      return;
     }
     setMsg("✓"); setTimeout(()=>setMsg(""),1500);
     await loadAll();
     setShowCoForm(false);
   };
   const doCoDel=async(id)=>{
-    await supabase.from("costs").delete().eq("id", id);
+    const {error} = await supabase.from("costs").delete().eq("id", id);
+    if(error){ alert("Errore nell'eliminazione:\n"+error.message); return; }
     await loadAll();
     setShowCoForm(false);
   };
