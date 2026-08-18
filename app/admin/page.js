@@ -83,7 +83,15 @@ export default function AdminApp(){
   const [coSearch,setCoSearch]=useState("");
   const [coFCat,setCoFCat]=useState("Tutte");
   const [msg,setMsg]=useState("");
+  const [isDesktop,setIsDesktop]=useState(false);
   const tlRef=useRef(null);
+
+  useEffect(()=>{
+    const check=()=>setIsDesktop(window.innerWidth>=900);
+    check();
+    window.addEventListener("resize",check);
+    return ()=>window.removeEventListener("resize",check);
+  },[]);
 
   const unitNameToId = (name) => properties.find(p=>p.name===name)?.id;
   const unitIdToName = (id) => properties.find(p=>p.id===id)?.name || "Casa Grande";
@@ -387,7 +395,7 @@ export default function AdminApp(){
   );
 
   return(
-    <div style={{background:"#0C1525",minHeight:"100vh",color:"#E2DCD0",fontFamily:"'Inter',system-ui,-apple-system,sans-serif",maxWidth:480,margin:"0 auto",paddingBottom:68}}>
+    <div style={{background:"#0C1525",minHeight:"100vh",color:"#E2DCD0",fontFamily:"'Inter',system-ui,-apple-system,sans-serif",maxWidth:isDesktop?1000:480,margin:"0 auto",paddingBottom:isDesktop?24:68}}>
 
       <div style={{background:"linear-gradient(135deg,#0F1A2E,#1A2744)",padding:"12px 16px 8px",borderBottom:"1px solid rgba(201,169,110,0.12)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -404,6 +412,17 @@ export default function AdminApp(){
           </div>
         </div>
       </div>
+
+      {isDesktop && (
+        <div style={{display:"flex",gap:8,padding:"10px 16px",background:"rgba(15,26,46,0.6)",borderBottom:"1px solid rgba(201,169,110,0.1)"}}>
+          {[{id:"cal",ic:"📅",lb:"Calendario"},{id:"bk",ic:"📋",lb:"Prenotazioni"},{id:"co",ic:"💰",lb:"Costi"}].map(t=>(
+            <button key={t.id} onClick={()=>{setTab(t.id);setSelId(null);setSelDay(null);}} style={{padding:"8px 18px",background:tab===t.id?"rgba(201,169,110,0.12)":"none",border:"1px solid",borderColor:tab===t.id?"rgba(201,169,110,0.35)":"transparent",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:7,color:tab===t.id?"#C9A96E":"#888"}}>
+              <span style={{fontSize:15}}>{t.ic}</span>
+              <span style={{fontSize:12,letterSpacing:0.6,fontWeight:tab===t.id?500:400}}>{t.lb}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab==="cal"&&<>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px",background:"#0F1A2E"}}>
@@ -452,7 +471,7 @@ export default function AdminApp(){
               const isWe=dw>=5;
               return(
                 <div key={i} onClick={()=>setSelDay(selDay===day?null:day)} style={{
-                  minHeight:52,borderRadius:6,padding:"3px 2px",cursor:"pointer",
+                  minHeight:isDesktop?76:52,borderRadius:6,padding:"3px 2px",cursor:"pointer",
                   background:isSel?"rgba(201,169,110,0.12)":isToday?"rgba(59,125,216,0.08)":isWe?"rgba(255,255,255,0.015)":"rgba(26,39,68,0.2)",
                   border:isSel?"1px solid rgba(201,169,110,0.3)":isToday?"1px solid rgba(59,125,216,0.25)":"1px solid rgba(255,255,255,0.03)",
                   display:"flex",flexDirection:"column"
@@ -570,20 +589,22 @@ export default function AdminApp(){
         </div>
       </>}
 
-      <button onClick={()=>tab==="co"?openCoAdd():openBkAdd()} style={{position:"fixed",bottom:74,right:14,width:48,height:48,borderRadius:"50%",background:"linear-gradient(135deg,#C9A96E,#A88840)",border:"none",color:"#0C1525",fontSize:22,fontWeight:300,cursor:"pointer",zIndex:50,boxShadow:"0 4px 14px rgba(201,169,110,0.3)",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+      <button onClick={()=>tab==="co"?openCoAdd():openBkAdd()} style={{position:"fixed",bottom:isDesktop?24:74,right:isDesktop?24:14,width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#C9A96E,#A88840)",border:"none",color:"#0C1525",fontSize:24,fontWeight:300,cursor:"pointer",zIndex:50,boxShadow:"0 4px 14px rgba(201,169,110,0.3)",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
 
-      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"linear-gradient(0deg,#0C1525,#111D32)",borderTop:"1px solid rgba(201,169,110,0.1)",display:"flex",maxWidth:480,margin:"0 auto",zIndex:40}}>
-        {[{id:"cal",ic:"📅",lb:"Calendario"},{id:"bk",ic:"📋",lb:"Prenotazioni"},{id:"co",ic:"💰",lb:"Costi"}].map(t=>(
-          <button key={t.id} onClick={()=>{setTab(t.id);setSelId(null);setSelDay(null);}} style={{flex:1,padding:"8px 0 10px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,color:tab===t.id?"#C9A96E":"#4a4a4a"}}>
-            <span style={{fontSize:17}}>{t.ic}</span>
-            <span style={{fontSize:8,letterSpacing:0.6,fontWeight:tab===t.id?500:400}}>{t.lb}</span>
-          </button>
-        ))}
-      </div>
+      {!isDesktop && (
+        <div style={{position:"fixed",bottom:0,left:0,right:0,background:"linear-gradient(0deg,#0C1525,#111D32)",borderTop:"1px solid rgba(201,169,110,0.1)",display:"flex",maxWidth:480,margin:"0 auto",zIndex:40}}>
+          {[{id:"cal",ic:"📅",lb:"Calendario"},{id:"bk",ic:"📋",lb:"Prenotazioni"},{id:"co",ic:"💰",lb:"Costi"}].map(t=>(
+            <button key={t.id} onClick={()=>{setTab(t.id);setSelId(null);setSelDay(null);}} style={{flex:1,padding:"8px 0 10px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,color:tab===t.id?"#C9A96E":"#4a4a4a"}}>
+              <span style={{fontSize:17}}>{t.ic}</span>
+              <span style={{fontSize:8,letterSpacing:0.6,fontWeight:tab===t.id?500:400}}>{t.lb}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {showBkForm&&(
         <div style={overlay} onClick={()=>setShowBkForm(false)}>
-          <div onClick={e=>e.stopPropagation()} style={modal}>
+          <div onClick={e=>e.stopPropagation()} style={isDesktop?{...modal,borderRadius:16,maxHeight:"85vh",margin:"auto"}:modal}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div style={{fontSize:14,fontWeight:500,color:"#C9A96E"}}>{editBkId?"✏️ Modifica":"➕ Nuova Prenotazione"}</div>
               <button onClick={()=>setShowBkForm(false)} style={closeBtn}>✕</button>
