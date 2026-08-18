@@ -395,7 +395,7 @@ export default function AdminApp(){
   );
 
   return(
-    <div style={{background:"#0C1525",minHeight:"100vh",color:"#E2DCD0",fontFamily:"'Inter',system-ui,-apple-system,sans-serif",maxWidth:isDesktop?1000:480,margin:"0 auto",paddingBottom:isDesktop?24:68}}>
+    <div style={{background:"#0C1525",minHeight:"100vh",color:"#E2DCD0",fontFamily:"'Inter',system-ui,-apple-system,sans-serif",maxWidth:isDesktop?1400:480,width:"100%",margin:"0 auto",padding:isDesktop?"0 32px":0,paddingBottom:isDesktop?32:68,boxSizing:"border-box"}}>
 
       <div style={{background:"linear-gradient(135deg,#0F1A2E,#1A2744)",padding:"12px 16px 8px",borderBottom:"1px solid rgba(201,169,110,0.12)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -521,7 +521,7 @@ export default function AdminApp(){
           <span>{filtBk.length} prenot.</span><span>·</span>
           <span>€{filtBk.filter(b=>b.status==="Confermata").reduce((s,b)=>s+b.grossPrice,0).toLocaleString("it-IT")} lordi</span>
         </div>
-        <div style={{padding:"0 14px 16px"}}>
+        <div style={isDesktop?{padding:"0 0 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:10,alignItems:"start"}:{padding:"0 14px 16px"}}>
           {filtBk.map(b=><BkCard key={b.id} b={b} exp={selId===b.id} onTog={()=>setSelId(selId===b.id?null:b.id)}/>)}
           {filtBk.length===0&&<div style={{textAlign:"center",padding:20,color:"#555",fontSize:11}}>Nessun risultato</div>}
         </div>
@@ -547,7 +547,7 @@ export default function AdminApp(){
             </div>
           ))}
         </div>
-        <div style={{padding:"0 14px 16px"}}>
+        <div style={isDesktop?{padding:"0 0 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:10,alignItems:"start"}:{padding:"0 14px 16px"}}>
           {filtCo.map(c=>{
             const iva=c.amount*(c.vatPct||0);
             const isRicavo=c.entryType==="Altro Ricavo";
