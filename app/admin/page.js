@@ -46,6 +46,13 @@ function pD(s){if(!s)return null;const d=new Date(s+"T00:00:00");return isNaN(d)
 function toI(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
 function fI(s){const d=pD(s);if(!d)return"";return`${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;}
 function nC(a,b){const d1=pD(a),d2=pD(b);if(!d1||!d2)return 0;return Math.round((d2-d1)/864e5);}
+// Parsing numerico tollerante: accetta sia virgola che punto come separatore decimale
+function toNum(str){
+  if(str===null||str===undefined) return 0;
+  const cleaned = String(str).replace(",",".").replace(/[^0-9.\-]/g,"");
+  const v = parseFloat(cleaned);
+  return isNaN(v) ? 0 : v;
+}
 
 const EMPTY_BK = {id:"",property_id:"",check_in:"",check_out:"",unit:"Casa Grande",channel:"Airbnb",guest_name:"",guests_count:2,gross_price:0,cleaning_fee:80,extra_fee:0,discount:0,touristTax:0,commissionEur:0,cedolareEur:0,status:"Confermata",payment_status:"In attesa",notes:"",booking_date:""};
 const EMPTY_CO = {id:"",date:"",category:"Pulizie",subcategory:"",supplier:"",unit:"Generale",amount:0,vat_pct:0,recurrence:"Una Tantum",payment_method:"Bonifico",notes:"",entryType:"Costo"};
@@ -214,7 +221,7 @@ export default function AdminApp(){
     const payload = {
       date: coForm.date, category: coForm.category, subcategory: coForm.subcategory,
       supplier: coForm.supplier, unit: coForm.unit,
-      amount: parseFloat(coForm.amount)||0, vat_pct: parseFloat(coForm.vatPct)||0,
+      amount: toNum(coForm.amount), vat_pct: parseFloat(coForm.vatPct)||0,
       recurrence: coForm.recurrence, payment_method: coForm.payMethod, notes: coForm.notes,
       entry_type: coForm.entryType||"Costo",
     };
@@ -581,22 +588,22 @@ export default function AdminApp(){
                 <label style={LS}>OSPITI<input type="number" value={bkForm.guests} min="1" max="12" onChange={e=>updBk({guests:parseInt(e.target.value)||1})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8}}>
-                <label style={LS}>PREZZO LORDO €<input type="number" value={bkForm.grossPrice} min="0" step="10" onChange={e=>updBk({grossPrice:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/></label>
-                <label style={LS}>CLEANING €<input type="number" value={bkForm.cleaningFee} min="0" onChange={e=>updBk({cleaningFee:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>PREZZO LORDO €<input type="text" inputMode="decimal" value={bkForm.grossPrice} onChange={e=>updBk({grossPrice:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>CLEANING €<input type="text" inputMode="decimal" value={bkForm.cleaningFee} onChange={e=>updBk({cleaningFee:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <label style={LS}>EXTRA €<input type="number" value={bkForm.extraFee} min="0" onChange={e=>updBk({extraFee:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/></label>
-                <label style={LS}>SCONTO €<input type="number" value={bkForm.discount} min="0" onChange={e=>updBk({discount:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>EXTRA €<input type="text" inputMode="decimal" value={bkForm.extraFee} onChange={e=>updBk({extraFee:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>SCONTO €<input type="text" inputMode="decimal" value={bkForm.discount} onChange={e=>updBk({discount:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <label style={LS}>TASSA SOGGIORNO € <span style={{opacity:0.6}}>(auto: notti × ospiti × €2)</span>
-                <input type="number" value={bkForm.touristTax} min="0" onChange={e=>updBk({touristTax:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/>
+                <input type="text" inputMode="decimal" value={bkForm.touristTax} onChange={e=>updBk({touristTax:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/>
               </label>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>COMMISSIONE € <span style={{opacity:0.6}}>({bkForm.grossPrice>0?((bkForm.commissionEur/bkForm.grossPrice)*100).toFixed(1):"0.0"}%)</span>
-                  <input type="number" value={bkForm.commissionEur} min="0" step="0.01" onChange={e=>updBk({commissionEur:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/>
+                  <input type="text" inputMode="decimal" value={bkForm.commissionEur} onChange={e=>updBk({commissionEur:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/>
                 </label>
                 <label style={LS}>CEDOLARE SECCA € <span style={{opacity:0.6}}>({(bkForm.grossPrice+bkForm.extraFee-bkForm.discount)>0?((bkForm.cedolareEur/(bkForm.grossPrice+bkForm.extraFee-bkForm.discount))*100).toFixed(1):"0.0"}%)</span>
-                  <input type="number" value={bkForm.cedolareEur} min="0" step="0.01" onChange={e=>updBk({cedolareEur:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/>
+                  <input type="text" inputMode="decimal" value={bkForm.cedolareEur} onChange={e=>updBk({cedolareEur:toNum(e.target.value)})} onFocus={e=>e.target.select()} style={IS}/>
                 </label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -658,7 +665,7 @@ export default function AdminApp(){
             <div style={{display:"grid",gap:8}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>DATA *<input type="date" value={coForm.date} onChange={e=>setCoForm({...coForm,date:e.target.value})} style={IS}/></label>
-                <label style={LS}>IMPORTO € *<input type="number" value={coForm.amount} min="0" step="1" onChange={e=>setCoForm({...coForm,amount:e.target.value})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>IMPORTO € *<input type="text" inputMode="decimal" value={coForm.amount} onChange={e=>setCoForm({...coForm,amount:e.target.value})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>CATEGORIA<select value={coForm.category} onChange={e=>setCoForm({...coForm,category:e.target.value})} style={IS}>{COST_CATS.map(c=><option key={c}>{c}</option>)}</select></label>
@@ -674,7 +681,7 @@ export default function AdminApp(){
                 <label style={LS}>PAGAMENTO<select value={coForm.payMethod} onChange={e=>setCoForm({...coForm,payMethod:e.target.value})} style={IS}>{PAY_METHODS.map(p=><option key={p}>{p}</option>)}</select></label>
               </div>
               <label style={LS}>NOTE<input value={coForm.notes} placeholder="Note opzionali" onChange={e=>setCoForm({...coForm,notes:e.target.value})} style={IS}/></label>
-              {coForm.amount>0&&(<div style={{background:"rgba(237,125,49,0.06)",borderRadius:7,padding:"7px 10px",border:"1px solid rgba(237,125,49,0.1)",display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:"#888"}}>IVA: €{(parseFloat(coForm.amount)*(coForm.vatPct||0)).toFixed(2)}</span><span style={{color:"#ED7D31",fontWeight:500}}>Netto: €{(parseFloat(coForm.amount)*(1-(coForm.vatPct||0))).toFixed(2)}</span></div>)}
+              {coForm.amount>0&&(<div style={{background:"rgba(237,125,49,0.06)",borderRadius:7,padding:"7px 10px",border:"1px solid rgba(237,125,49,0.1)",display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:"#888"}}>IVA: €{(toNum(coForm.amount)*(coForm.vatPct||0)).toFixed(2)}</span><span style={{color:"#ED7D31",fontWeight:500}}>Netto: €{(toNum(coForm.amount)*(1-(coForm.vatPct||0))).toFixed(2)}</span></div>)}
               <button onClick={doCoSave} disabled={!coForm.date||!coForm.amount} style={{...saveBtn,
                 background:(!coForm.date||!coForm.amount)?"rgba(150,150,150,0.15)":coForm.entryType==="Altro Ricavo"?"linear-gradient(135deg,#3DA66A,#2D7A4F)":"linear-gradient(135deg,#ED7D31,#C66A20)",
                 color:(!coForm.date||!coForm.amount)?"#555":"#0C1525"}}>{editCoId?"SALVA MODIFICHE":coForm.entryType==="Altro Ricavo"?"AGGIUNGI RICAVO":"AGGIUNGI COSTO"}</button>
