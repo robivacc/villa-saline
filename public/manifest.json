@@ -1,0 +1,10 @@
+{
+  "name": "Villa Saline",
+  "short_name": "Villa Saline",
+  "description": "Gestionale Villa Saline",
+  "start_url": "/admin",
+  "display": "standalone",
+  "background_color": "#0C1525",
+  "theme_color": "#0C1525",
+  "icons": []
+}
