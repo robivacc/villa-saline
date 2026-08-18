@@ -58,7 +58,7 @@ const EMPTY_BK = {id:"",property_id:"",check_in:"",check_out:"",unit:"Casa Grand
 const EMPTY_CO = {id:"",date:"",category:"Pulizie",subcategory:"",supplier:"",unit:"Generale",amount:0,vat_pct:0,recurrence:"Una Tantum",payment_method:"Bonifico",notes:"",entryType:"Costo"};
 
 const IS={display:"block",width:"100%",padding:"10px",marginTop:3,background:"rgba(15,26,46,0.8)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:6,color:"#E8E0D0",fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
-const LS={fontSize:10,color:"#777",letterSpacing:0.5,display:"block"};
+const LS={fontSize:11,color:"#777",letterSpacing:0.5,display:"block"};
 
 export default function AdminApp(){
   const today=new Date();
@@ -395,116 +395,123 @@ export default function AdminApp(){
   );
 
   return(
-    <div style={{background:"#0C1525",minHeight:"100vh",color:"#E2DCD0",fontFamily:"'Inter',system-ui,-apple-system,sans-serif",maxWidth:isDesktop?1400:480,width:"100%",margin:"0 auto",padding:isDesktop?"0 32px":0,paddingBottom:isDesktop?32:68,boxSizing:"border-box"}}>
+    <div style={{background:"#0C1525",minHeight:"100vh",color:"#E2DCD0",fontFamily:"'Inter',system-ui,-apple-system,sans-serif",maxWidth:isDesktop?"none":480,width:"100%",margin:"0 auto",paddingBottom:isDesktop?32:68,boxSizing:"border-box"}}>
 
-      <div style={{background:"linear-gradient(135deg,#0F1A2E,#1A2744)",padding:"12px 16px 8px",borderBottom:"1px solid rgba(201,169,110,0.12)"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{background:"linear-gradient(135deg,#0F1A2E,#1A2744)",padding:isDesktop?"14px 32px 10px":"12px 16px 8px",borderBottom:"1px solid rgba(201,169,110,0.12)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:isDesktop?32:0}}>
           <div>
-            <div style={{fontSize:9,letterSpacing:3,color:"#C9A96E",fontWeight:500,opacity:0.6}}>VILLA SALINE</div>
-            <div style={{fontSize:15,fontWeight:300,letterSpacing:0.5,marginTop:1,color:"#E8E0D0"}}>
+            <div style={{fontSize:isDesktop?11:9,letterSpacing:3,color:"#C9A96E",fontWeight:500,opacity:0.6}}>VILLA SALINE</div>
+            <div style={{fontSize:isDesktop?20:15,fontWeight:300,letterSpacing:0.5,marginTop:1,color:"#E8E0D0"}}>
               {tab==="cal"?"Calendario":tab==="bk"?"Prenotazioni":"Costi"}
-              {msg&&<span style={{fontSize:10,color:"#6B9E7A",marginLeft:6}}>{msg}</span>}
+              {msg&&<span style={{fontSize:12,color:"#6B9E7A",marginLeft:8}}>{msg}</span>}
             </div>
           </div>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            <div style={{fontSize:8,color:"#555",letterSpacing:0.5}}>🔗 LIVE DB</div>
-            <button onClick={tab==="co"?exportCo:exportBk} style={{background:"none",border:"1px solid rgba(201,169,110,0.2)",borderRadius:5,color:"#C9A96E",padding:"5px 8px",fontSize:9,cursor:"pointer",letterSpacing:0.8}}>CSV ↓</button>
-          </div>
+          {isDesktop && (
+            <div style={{display:"flex",gap:6,marginLeft:16}}>
+              {[{id:"cal",ic:"📅",lb:"Calendario"},{id:"bk",ic:"📋",lb:"Prenotazioni"},{id:"co",ic:"💰",lb:"Costi"}].map(t=>(
+                <button key={t.id} onClick={()=>{setTab(t.id);setSelId(null);setSelDay(null);}} style={{padding:"8px 20px",background:tab===t.id?"rgba(201,169,110,0.12)":"none",border:"1px solid",borderColor:tab===t.id?"rgba(201,169,110,0.35)":"transparent",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:8,color:tab===t.id?"#C9A96E":"#888",fontSize:14,fontFamily:"inherit"}}>
+                  <span>{t.ic}</span>
+                  <span style={{fontWeight:tab===t.id?500:400}}>{t.lb}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <div style={{fontSize:isDesktop?10:8,color:"#555",letterSpacing:0.5}}>🔗 LIVE DB</div>
+          <button onClick={tab==="co"?exportCo:exportBk} style={{background:"none",border:"1px solid rgba(201,169,110,0.2)",borderRadius:5,color:"#C9A96E",padding:isDesktop?"7px 14px":"5px 8px",fontSize:isDesktop?12:9,cursor:"pointer",letterSpacing:0.8,fontFamily:"inherit"}}>CSV ↓</button>
         </div>
       </div>
 
-      {isDesktop && (
-        <div style={{display:"flex",gap:8,padding:"10px 16px",background:"rgba(15,26,46,0.6)",borderBottom:"1px solid rgba(201,169,110,0.1)"}}>
-          {[{id:"cal",ic:"📅",lb:"Calendario"},{id:"bk",ic:"📋",lb:"Prenotazioni"},{id:"co",ic:"💰",lb:"Costi"}].map(t=>(
-            <button key={t.id} onClick={()=>{setTab(t.id);setSelId(null);setSelDay(null);}} style={{padding:"8px 18px",background:tab===t.id?"rgba(201,169,110,0.12)":"none",border:"1px solid",borderColor:tab===t.id?"rgba(201,169,110,0.35)":"transparent",borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:7,color:tab===t.id?"#C9A96E":"#888"}}>
-              <span style={{fontSize:15}}>{t.ic}</span>
-              <span style={{fontSize:12,letterSpacing:0.6,fontWeight:tab===t.id?500:400}}>{t.lb}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
       {tab==="cal"&&<>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px",background:"#0F1A2E"}}>
-          <button onClick={prevMo} style={navBtn}>‹</button>
-          <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToday}>
-            <div style={{fontSize:15,fontWeight:400,letterSpacing:0.5}}>{MI[mo]} {yr}</div>
-            <div style={{fontSize:8,color:"#C9A96E",opacity:0.4,letterSpacing:1,marginTop:1}}>TAP → OGGI</div>
-          </div>
-          <button onClick={nextMo} style={navBtn}>›</button>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",padding:"6px 12px",gap:6,background:"#0F1A2E",borderBottom:"1px solid rgba(201,169,110,0.06)"}}>
-          {[{l:"OCC.",v:`${occ}%`},{l:"BOOK.",v:confMonth.length},{l:"REV.",v:`€${(mRev/1000).toFixed(1)}k`},{l:"COSTI",v:`€${mCost.toLocaleString("it-IT")}`}].map((x,i)=>(
-            <div key={i} style={{background:"rgba(26,39,68,0.45)",borderRadius:7,padding:"5px 4px",textAlign:"center",border:"1px solid rgba(201,169,110,0.05)"}}>
-              <div style={{fontSize:8,letterSpacing:1.2,color:"#C9A96E",opacity:0.5}}>{x.l}</div>
-              <div style={{fontSize:15,fontWeight:300,color:"#E8E0D0",marginTop:1}}>{x.v}</div>
+        <div style={{padding:isDesktop?"16px 32px":"8px 16px",background:"#0F1A2E"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:isDesktop?12:0}}>
+            <button onClick={prevMo} style={{...navBtn,fontSize:isDesktop?28:24}}>‹</button>
+            <div style={{textAlign:"center",cursor:"pointer"}} onClick={goToday}>
+              <div style={{fontSize:isDesktop?22:15,fontWeight:400,letterSpacing:0.5}}>{MI[mo]} {yr}</div>
+              {!isDesktop&&<div style={{fontSize:8,color:"#C9A96E",opacity:0.4,letterSpacing:1,marginTop:1}}>TAP → OGGI</div>}
             </div>
-          ))}
-        </div>
+            <button onClick={nextMo} style={{...navBtn,fontSize:isDesktop?28:24}}>›</button>
+          </div>
 
-        <div style={{display:"flex",justifyContent:"center",gap:14,padding:"8px 16px 4px"}}>
-          {UNITS.map(u=>(
-            <div key={u} style={{display:"flex",alignItems:"center",gap:4}}>
-              <div style={{width:16,height:5,borderRadius:2,background:UC[u]}}/>
-              <span style={{fontSize:9,color:"#888"}}>{u==="Casa Grande"?"CG":u==="Casa Piccola"?"CP":"VI"}</span>
-            </div>
-          ))}
-          <div style={{display:"flex",alignItems:"center",gap:4}}>
-            <div style={{width:8,height:5,borderRadius:2,background:"rgba(212,168,67,0.7)"}}/>
-            <span style={{fontSize:9,color:"#888"}}>Opz.</span>
+          <div style={{display:"grid",gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr 1fr 1fr 1fr",gap:isDesktop?12:6}}>
+            {[{l:"OCCUPANCY",v:`${occ}%`},{l:"PRENOTAZIONI",v:confMonth.length},{l:"REVENUE",v:`€${(mRev/1000).toFixed(1)}k`},{l:"COSTI",v:`€${mCost.toLocaleString("it-IT")}`}].map((x,i)=>(
+              <div key={i} style={{background:"rgba(26,39,68,0.45)",borderRadius:isDesktop?10:7,padding:isDesktop?"12px 16px":"5px 4px",textAlign:"center",border:"1px solid rgba(201,169,110,0.05)"}}>
+                <div style={{fontSize:isDesktop?11:8,letterSpacing:1.5,color:"#C9A96E",opacity:0.6}}>{isDesktop?x.l:x.l.substring(0,4)+"."}</div>
+                <div style={{fontSize:isDesktop?26:15,fontWeight:300,color:"#E8E0D0",marginTop:isDesktop?4:1}}>{x.v}</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div style={{padding:"4px 10px 8px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:3}}>
-            {DOW.map((d,i)=>(<div key={d} style={{textAlign:"center",fontSize:9,color:i>=5?"#C9A96E":"#555",letterSpacing:0.5,padding:"2px 0",fontWeight:500}}>{d}</div>))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
-            {gridCells.map((day,i)=>{
-              if(!day)return <div key={i}/>;
-              const ds=`${yr}-${String(mo+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-              const isToday=ds===todayStr;
-              const isSel=selDay===day;
-              const occ2=unitsOnDay(day);
-              const dw=(new Date(yr,mo,day).getDay()+6)%7;
-              const isWe=dw>=5;
-              return(
-                <div key={i} onClick={()=>setSelDay(selDay===day?null:day)} style={{
-                  minHeight:isDesktop?76:52,borderRadius:6,padding:"3px 2px",cursor:"pointer",
-                  background:isSel?"rgba(201,169,110,0.12)":isToday?"rgba(59,125,216,0.08)":isWe?"rgba(255,255,255,0.015)":"rgba(26,39,68,0.2)",
-                  border:isSel?"1px solid rgba(201,169,110,0.3)":isToday?"1px solid rgba(59,125,216,0.25)":"1px solid rgba(255,255,255,0.03)",
-                  display:"flex",flexDirection:"column"
-                }}>
-                  <div style={{fontSize:11,fontWeight:isToday?600:300,color:isToday?"#3B7DD8":isSel?"#C9A96E":"#888",textAlign:"center",marginBottom:2}}>{day}</div>
-                  <div style={{flex:1,display:"flex",flexDirection:"column",gap:2,padding:"0 2px"}}>
-                    {occ2.map((o,j)=>(<div key={j} style={{height:5,borderRadius:2,background:o.status==="Opzionata"?`${UC[o.unit]}88`:UC[o.unit],opacity:o.status==="Opzionata"?0.6:0.9}}/>))}
-                  </div>
+        <div style={isDesktop?{display:"grid",gridTemplateColumns:"1fr 380px",gap:24,padding:"16px 32px",alignItems:"start"}:{}}>
+
+          <div>
+            <div style={{display:"flex",justifyContent:"center",gap:isDesktop?20:14,padding:isDesktop?"0 0 10px":"8px 16px 4px"}}>
+              {UNITS.map(u=>(
+                <div key={u} style={{display:"flex",alignItems:"center",gap:5}}>
+                  <div style={{width:isDesktop?20:16,height:isDesktop?6:5,borderRadius:2,background:UC[u]}}/>
+                  <span style={{fontSize:isDesktop?12:9,color:"#888"}}>{u==="Casa Grande"?"CG":u==="Casa Piccola"?"CP":"VI"}</span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {selDay&&(
-          <div style={{padding:"4px 12px 8px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{fontSize:12,color:"#C9A96E",fontWeight:500}}>{selDay} {MI[mo]} {yr}</div>
-              <button onClick={()=>openBkAdd("Casa Grande",selDay)} style={{...btnSec,padding:"5px 10px",fontSize:10}}>+ Prenota</button>
+              ))}
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                <div style={{width:isDesktop?12:8,height:isDesktop?6:5,borderRadius:2,background:"rgba(212,168,67,0.7)"}}/>
+                <span style={{fontSize:isDesktop?12:9,color:"#888"}}>Opz.</span>
+              </div>
             </div>
-            {bookingsOnDay(selDay).length>0?
-              bookingsOnDay(selDay).map(b=><BkCard key={b.id} b={b} exp={selId===b.id} onTog={()=>setSelId(selId===b.id?null:b.id)}/>)
-              :<div style={{fontSize:11,color:"#555",textAlign:"center",padding:12}}>Nessuna prenotazione — giorno libero</div>}
-          </div>
-        )}
 
-        {!selDay&&(
-          <div style={{padding:"4px 12px 12px"}}>
-            <div style={{fontSize:10,letterSpacing:1.5,color:"#C9A96E",marginBottom:6,fontWeight:500}}>PRENOTAZIONI MESE ({monthBk.length})</div>
-            {monthBk.map(b=><BkCard key={b.id} b={b} exp={selId===b.id} onTog={()=>setSelId(selId===b.id?null:b.id)}/>)}
-            {monthBk.length===0&&<div style={{textAlign:"center",padding:16,color:"#555",fontSize:11}}>Nessuna prenotazione</div>}
+            <div style={{padding:isDesktop?"0":"4px 10px 8px"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:isDesktop?4:2,marginBottom:isDesktop?6:3}}>
+                {DOW.map((d,i)=>(<div key={d} style={{textAlign:"center",fontSize:isDesktop?13:9,color:i>=5?"#C9A96E":"#666",letterSpacing:0.5,padding:isDesktop?"4px 0":"2px 0",fontWeight:500}}>{d}</div>))}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:isDesktop?4:2}}>
+                {gridCells.map((day,i)=>{
+                  if(!day)return <div key={i}/>;
+                  const ds=`${yr}-${String(mo+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+                  const isToday=ds===todayStr;
+                  const isSel=selDay===day;
+                  const occ2=unitsOnDay(day);
+                  const dw=(new Date(yr,mo,day).getDay()+6)%7;
+                  const isWe=dw>=5;
+                  return(
+                    <div key={i} onClick={()=>setSelDay(selDay===day?null:day)} style={{
+                      minHeight:isDesktop?90:52,borderRadius:isDesktop?8:6,padding:isDesktop?"6px 6px":"3px 2px",cursor:"pointer",
+                      background:isSel?"rgba(201,169,110,0.12)":isToday?"rgba(59,125,216,0.08)":isWe?"rgba(255,255,255,0.015)":"rgba(26,39,68,0.2)",
+                      border:isSel?"1px solid rgba(201,169,110,0.3)":isToday?"1px solid rgba(59,125,216,0.25)":"1px solid rgba(255,255,255,0.03)",
+                      display:"flex",flexDirection:"column",transition:"border 0.1s"
+                    }}>
+                      <div style={{fontSize:isDesktop?14:11,fontWeight:isToday?600:300,color:isToday?"#3B7DD8":isSel?"#C9A96E":"#888",textAlign:isDesktop?"left":"center",marginBottom:isDesktop?4:2}}>{day}</div>
+                      <div style={{flex:1,display:"flex",flexDirection:"column",gap:isDesktop?3:2,padding:"0 2px"}}>
+                        {occ2.map((o,j)=>(<div key={j} style={{height:isDesktop?6:5,borderRadius:2,background:o.status==="Opzionata"?`${UC[o.unit]}88`:UC[o.unit],opacity:o.status==="Opzionata"?0.6:0.9}}/>))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        )}
+
+          <div style={isDesktop?{background:"rgba(26,39,68,0.3)",borderRadius:12,padding:"16px",border:"1px solid rgba(201,169,110,0.06)",maxHeight:"calc(100vh - 220px)",overflowY:"auto"}:{}}>
+            {selDay?(
+              <div style={{padding:isDesktop?"0":"4px 12px 8px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <div style={{fontSize:isDesktop?16:12,color:"#C9A96E",fontWeight:500}}>{selDay} {MI[mo]} {yr}</div>
+                  <button onClick={()=>openBkAdd("Casa Grande",selDay)} style={{...btnSec,padding:"6px 12px",fontSize:isDesktop?12:10}}>+ Prenota</button>
+                </div>
+                {bookingsOnDay(selDay).length>0?
+                  bookingsOnDay(selDay).map(b=><BkCard key={b.id} b={b} exp={selId===b.id} onTog={()=>setSelId(selId===b.id?null:b.id)}/>)
+                  :<div style={{fontSize:isDesktop?13:11,color:"#555",textAlign:"center",padding:16}}>Nessuna prenotazione — giorno libero</div>}
+              </div>
+            ):(
+              <div style={{padding:isDesktop?"0":"4px 12px 12px"}}>
+                <div style={{fontSize:isDesktop?13:10,letterSpacing:1.5,color:"#C9A96E",marginBottom:8,fontWeight:500}}>PRENOTAZIONI MESE ({monthBk.length})</div>
+                {monthBk.map(b=><BkCard key={b.id} b={b} exp={selId===b.id} onTog={()=>setSelId(selId===b.id?null:b.id)}/>)}
+                {monthBk.length===0&&<div style={{textAlign:"center",padding:16,color:"#555",fontSize:isDesktop?13:11}}>Nessuna prenotazione</div>}
+              </div>
+            )}
+          </div>
+
+        </div>
       </>}
 
       {tab==="bk"&&<>
@@ -604,7 +611,7 @@ export default function AdminApp(){
 
       {showBkForm&&(
         <div style={overlay} onClick={()=>setShowBkForm(false)}>
-          <div onClick={e=>e.stopPropagation()} style={isDesktop?{...modal,borderRadius:16,maxHeight:"85vh",margin:"auto"}:modal}>
+          <div onClick={e=>e.stopPropagation()} style={modal}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div style={{fontSize:14,fontWeight:500,color:"#C9A96E"}}>{editBkId?"✏️ Modifica":"➕ Nuova Prenotazione"}</div>
               <button onClick={()=>setShowBkForm(false)} style={closeBtn}>✕</button>
@@ -734,7 +741,7 @@ export default function AdminApp(){
 const navBtn={background:"none",border:"none",color:"#C9A96E",fontSize:24,cursor:"pointer",padding:"4px 14px"};
 const pill={padding:"4px 10px",borderRadius:16,fontSize:9,cursor:"pointer",whiteSpace:"nowrap",border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"#666",letterSpacing:0.3,fontFamily:"inherit"};
 const btnSec={flex:1,padding:"7px",borderRadius:6,border:"1px solid rgba(201,169,110,0.25)",background:"none",color:"#C9A96E",fontSize:11,cursor:"pointer",fontFamily:"inherit"};
-const overlay={position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"};
-const modal={background:"#141E33",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:480,maxHeight:"90vh",overflowY:"auto",padding:"16px 16px 28px",border:"1px solid rgba(201,169,110,0.1)",borderBottom:"none"};
+const overlay={position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"};
+const modal={background:"#141E33",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",padding:"20px 20px 28px",border:"1px solid rgba(201,169,110,0.1)"};
 const closeBtn={background:"none",border:"none",color:"#555",fontSize:18,cursor:"pointer",padding:"4px 8px"};
 const saveBtn={padding:"13px",borderRadius:8,border:"none",fontSize:13,fontWeight:500,letterSpacing:0.8,cursor:"pointer",marginTop:2,fontFamily:"inherit"};
