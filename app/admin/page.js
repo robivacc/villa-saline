@@ -24,19 +24,20 @@ const CEDOLARE_PCT = 0.21;
 const TOURIST_TAX_RATE = 2;
 const ENTRY_TYPES = ["Costo","Altro Ricavo"];
 
-// Calcola il riepilogo finanziario di una prenotazione secondo la formula:
-// (+) Lordo (+) Extra (-) Sconto (+) Tassa Soggiorno (-) Commissione (-) Cedolare secca (=) Netto
+// Calcola il riepilogo finanziario di una prenotazione.
+// Commissione € e Cedolare € sono INPUT MANUALI; le % sono calcolate automaticamente per riferimento.
 function calcNet(b){
   const gross = Number(b.grossPrice)||0;
   const extra = Number(b.extraFee)||0;
   const discount = Number(b.discount)||0;
   const touristTax = Number(b.touristTax)||0;
-  const commPct = CR[b.channel]||0;
-  const commEur = gross*commPct;
+  const commEur = Number(b.commissionEur)||0;
+  const cedolareEur = Number(b.cedolareEur)||0;
   const taxableBase = gross+extra-discount;
-  const cedolareEur = taxableBase*CEDOLARE_PCT;
+  const commPct = gross>0 ? commEur/gross : 0;
+  const cedolarePct = taxableBase>0 ? cedolareEur/taxableBase : 0;
   const net = gross+extra-discount+touristTax-commEur-cedolareEur;
-  return {gross,extra,discount,touristTax,commPct,commEur,cedolareEur,net};
+  return {gross,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net};
 }
 
 function dim(y,m){return new Date(y,m+1,0).getDate();}
@@ -45,7 +46,7 @@ function toI(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0
 function fI(s){const d=pD(s);if(!d)return"";return`${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;}
 function nC(a,b){const d1=pD(a),d2=pD(b);if(!d1||!d2)return 0;return Math.round((d2-d1)/864e5);}
 
-const EMPTY_BK = {id:"",property_id:"",check_in:"",check_out:"",unit:"Casa Grande",channel:"Airbnb",guest_name:"",guests_count:2,gross_price:0,cleaning_fee:80,extra_fee:0,discount:0,touristTax:0,status:"Confermata",payment_status:"In attesa",notes:"",booking_date:""};
+const EMPTY_BK = {id:"",property_id:"",check_in:"",check_out:"",unit:"Casa Grande",channel:"Airbnb",guest_name:"",guests_count:2,gross_price:0,cleaning_fee:80,extra_fee:0,discount:0,touristTax:0,commissionEur:0,cedolareEur:0,status:"Confermata",payment_status:"In attesa",notes:"",booking_date:""};
 const EMPTY_CO = {id:"",date:"",category:"Pulizie",subcategory:"",supplier:"",unit:"Generale",amount:0,vat_pct:0,recurrence:"Una Tantum",payment_method:"Bonifico",notes:"",entryType:"Costo"};
 
 const IS={display:"block",width:"100%",padding:"10px",marginTop:3,background:"rgba(15,26,46,0.8)",border:"1px solid rgba(201,169,110,0.15)",borderRadius:6,color:"#E8E0D0",fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
@@ -88,7 +89,7 @@ export default function AdminApp(){
       ...b, unit: (props||[]).find(p=>p.id===b.property_id)?.name || "Casa Grande",
       guestName:b.guest_name, checkIn:b.check_in, checkOut:b.check_out, guests:b.guests_count,
       grossPrice:Number(b.gross_price), cleaningFee:Number(b.cleaning_fee), extraFee:Number(b.extra_fee),
-      discount:Number(b.discount), touristTax:Number(b.tourist_tax||0), paymentStatus:b.payment_status, bookingDate:b.booking_date
+      discount:Number(b.discount), touristTax:Number(b.tourist_tax||0), commissionEur:Number(b.commission_eur||0), cedolareEur:Number(b.cedolare_eur||0), paymentStatus:b.payment_status, bookingDate:b.booking_date
     })));
     const { data: costs } = await supabase.from("costs").select("*").order("date",{ascending:false});
     setCo((costs||[]).map(c=>({
@@ -183,6 +184,8 @@ export default function AdminApp(){
       extra_fee: bkForm.extraFee,
       discount: bkForm.discount,
       tourist_tax: bkForm.touristTax,
+      commission_eur: bkForm.commissionEur,
+      cedolare_eur: bkForm.cedolareEur,
       status: bkForm.status,
       payment_status: bkForm.paymentStatus,
       booking_date: bkForm.bookingDate || toI(today),
@@ -236,6 +239,17 @@ export default function AdminApp(){
       const nights=nC(n.checkIn,n.checkOut);
       if(nights>0&&n.guests>0) n.touristTax = nights*n.guests*TOURIST_TAX_RATE;
     }
+    // Suggerisce commissione e cedolare quando cambia canale, lordo, extra o sconto — ma solo se non modificate a mano dall'utente in questa sessione di editing
+    if((u.channel!==undefined||u.grossPrice!==undefined||u.extraFee!==undefined||u.discount!==undefined) && !n._manualComm){
+      const suggestedRate = CR[n.channel]||0;
+      n.commissionEur = Math.round((n.grossPrice||0)*suggestedRate*100)/100;
+    }
+    if((u.grossPrice!==undefined||u.extraFee!==undefined||u.discount!==undefined) && !n._manualCedolare){
+      const base=(n.grossPrice||0)+(n.extraFee||0)-(n.discount||0);
+      n.cedolareEur = Math.round(base*CEDOLARE_PCT*100)/100;
+    }
+    if(u.commissionEur!==undefined) n._manualComm=true;
+    if(u.cedolareEur!==undefined) n._manualCedolare=true;
     setBkForm(n);
   };
 
@@ -270,8 +284,8 @@ export default function AdminApp(){
     const h=["Booking ID","Data Prenotazione","Check-in","Check-out","Notti","Mese","Anno","Unità","Canale","Nome Ospite","N. Ospiti","Prezzo Lordo","Cleaning Fee","Extra Fee","Sconto","Tassa Soggiorno","Commissione %","Commissione €","Cedolare Secca %","Cedolare Secca €","Ricavo Netto","Stato Pagamento","Stato Prenotazione","Note"];
     const rows=src.map(b=>{
       const n=nC(b.checkIn,b.checkOut);const ci=pD(b.checkIn);
-      const {gross,extra,discount,touristTax,commPct,commEur,cedolareEur,net}=calcNet(b);
-      return[b.id,fI(b.bookingDate),fI(b.checkIn),fI(b.checkOut),n,ci?ci.getMonth()+1:"",ci?ci.getFullYear():"",b.unit,b.channel,b.guestName,b.guests,gross,b.cleaningFee,extra,discount,touristTax.toFixed(2),(commPct*100).toFixed(1)+"%",commEur.toFixed(2),"21%",cedolareEur.toFixed(2),net.toFixed(2),b.paymentStatus,b.status,b.notes].map(v=>`"${v}"`).join(";");
+      const {gross,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net}=calcNet(b);
+      return[b.id,fI(b.bookingDate),fI(b.checkIn),fI(b.checkOut),n,ci?ci.getMonth()+1:"",ci?ci.getFullYear():"",b.unit,b.channel,b.guestName,b.guests,gross,b.cleaningFee,extra,discount,touristTax.toFixed(2),(commPct*100).toFixed(1)+"%",commEur.toFixed(2),(cedolarePct*100).toFixed(1)+"%",cedolareEur.toFixed(2),net.toFixed(2),b.paymentStatus,b.status,b.notes].map(v=>`"${v}"`).join(";");
     });
     dl("\uFEFF"+h.join(";")+"\n"+rows.join("\n"),`VillaSaline_Bookings_${yr}.csv`);
   };
@@ -284,7 +298,7 @@ export default function AdminApp(){
 
   const BkCard=({b,exp,onTog})=>{
     const n=nC(b.checkIn,b.checkOut),c=SC[b.status];
-    const {gross,extra,discount,touristTax,commPct,commEur,cedolareEur,net}=calcNet(b);
+    const {gross,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net}=calcNet(b);
     const row=(label,val,sign)=>(
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"2px 0"}}>
         <span style={{color:"#888"}}>{sign} {label}</span>
@@ -317,11 +331,11 @@ export default function AdminApp(){
               {row("Sconto",discount,"−")}
               {row("Tassa Soggiorno",touristTax,"+")}
               <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"2px 0"}}>
-                <span style={{color:"#888"}}>− Commissione ({(commPct*100).toFixed(0)}%)</span>
+                <span style={{color:"#888"}}>− Commissione ({(commPct*100).toFixed(1)}%)</span>
                 <span style={{color:"#E8E0D0"}}>€{commEur.toFixed(2)}</span>
               </div>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"2px 0"}}>
-                <span style={{color:"#888"}}>− Cedolare secca (21%)</span>
+                <span style={{color:"#888"}}>− Cedolare secca ({(cedolarePct*100).toFixed(1)}%)</span>
                 <span style={{color:"#E8E0D0"}}>€{cedolareEur.toFixed(2)}</span>
               </div>
               <div style={{display:"flex",justifyContent:"space-between",fontSize:13,paddingTop:5,marginTop:5,borderTop:"1px solid rgba(255,255,255,0.08)"}}>
@@ -576,12 +590,20 @@ export default function AdminApp(){
                 <input type="number" value={bkForm.touristTax} min="0" onChange={e=>updBk({touristTax:parseFloat(e.target.value)||0})} style={IS}/>
               </label>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <label style={LS}>COMMISSIONE € <span style={{opacity:0.6}}>({bkForm.grossPrice>0?((bkForm.commissionEur/bkForm.grossPrice)*100).toFixed(1):"0.0"}%)</span>
+                  <input type="number" value={bkForm.commissionEur} min="0" step="0.01" onChange={e=>updBk({commissionEur:parseFloat(e.target.value)||0})} style={IS}/>
+                </label>
+                <label style={LS}>CEDOLARE SECCA € <span style={{opacity:0.6}}>({(bkForm.grossPrice+bkForm.extraFee-bkForm.discount)>0?((bkForm.cedolareEur/(bkForm.grossPrice+bkForm.extraFee-bkForm.discount))*100).toFixed(1):"0.0"}%)</span>
+                  <input type="number" value={bkForm.cedolareEur} min="0" step="0.01" onChange={e=>updBk({cedolareEur:parseFloat(e.target.value)||0})} style={IS}/>
+                </label>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>STATO<select value={bkForm.status} onChange={e=>updBk({status:e.target.value})} style={IS}>{STATUSES.map(s=><option key={s}>{s}</option>)}</select></label>
                 <label style={LS}>PAGAMENTO<select value={bkForm.paymentStatus} onChange={e=>updBk({paymentStatus:e.target.value})} style={IS}>{PAY_ST.map(s=><option key={s}>{s}</option>)}</select></label>
               </div>
               <label style={LS}>NOTE<input value={bkForm.notes} placeholder="Note opzionali" onChange={e=>updBk({notes:e.target.value})} style={IS}/></label>
               {bkForm.checkIn&&bkForm.checkOut&&bkForm.grossPrice>0&&(()=>{
-                const {gross,extra,discount,touristTax,commPct,commEur,cedolareEur,net}=calcNet(bkForm);
+                const {gross,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net}=calcNet(bkForm);
                 const n=nC(bkForm.checkIn,bkForm.checkOut);
                 const frow=(label,val,sign)=>(
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"1px 0"}}>
@@ -595,10 +617,10 @@ export default function AdminApp(){
                   {frow("Sconto",discount,"−")}
                   {frow("Tassa Soggiorno",touristTax,"+")}
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"1px 0"}}>
-                    <span style={{color:"#888"}}>− Commissione ({(commPct*100).toFixed(0)}%)</span><span style={{color:"#E8E0D0"}}>€{commEur.toFixed(2)}</span>
+                    <span style={{color:"#888"}}>− Commissione ({(commPct*100).toFixed(1)}%)</span><span style={{color:"#E8E0D0"}}>€{commEur.toFixed(2)}</span>
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"1px 0"}}>
-                    <span style={{color:"#888"}}>− Cedolare secca (21%)</span><span style={{color:"#E8E0D0"}}>€{cedolareEur.toFixed(2)}</span>
+                    <span style={{color:"#888"}}>− Cedolare secca ({(cedolarePct*100).toFixed(1)}%)</span><span style={{color:"#E8E0D0"}}>€{cedolareEur.toFixed(2)}</span>
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:13,paddingTop:5,marginTop:5,borderTop:"1px solid rgba(255,255,255,0.08)"}}>
                     <span style={{color:"#C9A96E",fontWeight:500}}>= Ricavo Netto</span><span style={{color:"#3DA66A",fontWeight:700}}>€{net.toFixed(2)}</span>
