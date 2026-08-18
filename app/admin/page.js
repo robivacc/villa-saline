@@ -243,10 +243,6 @@ export default function AdminApp(){
   const updBk=(u)=>{
     const n={...bkForm,...u};
     if(u.unit&&!editBkId)n.cleaningFee=DC[u.unit]||80;
-    if(u.checkIn!==undefined||u.checkOut!==undefined||u.guests!==undefined){
-      const nights=nC(n.checkIn,n.checkOut);
-      if(nights>0&&n.guests>0) n.touristTax = nights*n.guests*TOURIST_TAX_RATE;
-    }
     // Suggerisce commissione e cedolare quando cambia canale, lordo, extra o sconto — ma solo se non modificate a mano dall'utente in questa sessione di editing
     if((u.channel!==undefined||u.grossPrice!==undefined||u.extraFee!==undefined||u.discount!==undefined) && !n._manualComm){
       const suggestedRate = CR[n.channel]||0;
@@ -582,6 +578,9 @@ export default function AdminApp(){
                 <label style={LS}>CHECK-IN *<input type="date" value={bkForm.checkIn} onChange={e=>updBk({checkIn:e.target.value})} style={IS}/></label>
                 <label style={LS}>CHECK-OUT *<input type="date" value={bkForm.checkOut} onChange={e=>updBk({checkOut:e.target.value})} style={IS}/></label>
               </div>
+              <label style={LS}>DATA PRENOTAZIONE <span style={{opacity:0.6}}>(quando è arrivata la richiesta)</span>
+                <input type="date" value={bkForm.bookingDate} onChange={e=>updBk({bookingDate:e.target.value})} style={IS}/>
+              </label>
               <label style={LS}>NOME OSPITE *<input value={bkForm.guestName} placeholder="Nome e Cognome" onChange={e=>updBk({guestName:e.target.value})} style={IS}/></label>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>CANALE<select value={bkForm.channel} onChange={e=>updBk({channel:e.target.value})} style={IS}>{CHANNELS.map(c=><option key={c}>{c}</option>)}</select></label>
@@ -595,7 +594,7 @@ export default function AdminApp(){
                 <label style={LS}>EXTRA €<input type="text" inputMode="decimal" value={bkForm.extraFee} onChange={e=>updBk({extraFee:e.target.value})} onFocus={e=>e.target.select()} style={IS}/></label>
                 <label style={LS}>SCONTO €<input type="text" inputMode="decimal" value={bkForm.discount} onChange={e=>updBk({discount:e.target.value})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
-              <label style={LS}>TASSA SOGGIORNO € <span style={{opacity:0.6}}>(auto: notti × ospiti × €2)</span>
+              <label style={LS}>TASSA SOGGIORNO €
                 <input type="text" inputMode="decimal" value={bkForm.touristTax} onChange={e=>updBk({touristTax:e.target.value})} onFocus={e=>e.target.select()} style={IS}/>
               </label>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
