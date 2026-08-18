@@ -28,6 +28,7 @@ const ENTRY_TYPES = ["Costo","Altro Ricavo"];
 // Commissione € e Cedolare € sono INPUT MANUALI; le % sono calcolate automaticamente per riferimento.
 function calcNet(b){
   const gross = Number(b.grossPrice)||0;
+  const cleaning = Number(b.cleaningFee)||0;
   const extra = Number(b.extraFee)||0;
   const discount = Number(b.discount)||0;
   const touristTax = Number(b.touristTax)||0;
@@ -36,8 +37,8 @@ function calcNet(b){
   const taxableBase = gross+extra-discount;
   const commPct = gross>0 ? commEur/gross : 0;
   const cedolarePct = taxableBase>0 ? cedolareEur/taxableBase : 0;
-  const net = gross+extra-discount+touristTax-commEur-cedolareEur;
-  return {gross,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net};
+  const net = gross+cleaning+extra-discount+touristTax-commEur-cedolareEur;
+  return {gross,cleaning,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net};
 }
 
 function dim(y,m){return new Date(y,m+1,0).getDate();}
@@ -284,7 +285,7 @@ export default function AdminApp(){
     const h=["Booking ID","Data Prenotazione","Check-in","Check-out","Notti","Mese","Anno","Unità","Canale","Nome Ospite","N. Ospiti","Prezzo Lordo","Cleaning Fee","Extra Fee","Sconto","Tassa Soggiorno","Commissione %","Commissione €","Cedolare Secca %","Cedolare Secca €","Ricavo Netto","Stato Pagamento","Stato Prenotazione","Note"];
     const rows=src.map(b=>{
       const n=nC(b.checkIn,b.checkOut);const ci=pD(b.checkIn);
-      const {gross,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net}=calcNet(b);
+      const {gross,cleaning,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net}=calcNet(b);
       return[b.id,fI(b.bookingDate),fI(b.checkIn),fI(b.checkOut),n,ci?ci.getMonth()+1:"",ci?ci.getFullYear():"",b.unit,b.channel,b.guestName,b.guests,gross,b.cleaningFee,extra,discount,touristTax.toFixed(2),(commPct*100).toFixed(1)+"%",commEur.toFixed(2),(cedolarePct*100).toFixed(1)+"%",cedolareEur.toFixed(2),net.toFixed(2),b.paymentStatus,b.status,b.notes].map(v=>`"${v}"`).join(";");
     });
     dl("\uFEFF"+h.join(";")+"\n"+rows.join("\n"),`VillaSaline_Bookings_${yr}.csv`);
@@ -298,7 +299,7 @@ export default function AdminApp(){
 
   const BkCard=({b,exp,onTog})=>{
     const n=nC(b.checkIn,b.checkOut),c=SC[b.status];
-    const {gross,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net}=calcNet(b);
+    const {gross,cleaning,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net}=calcNet(b);
     const row=(label,val,sign)=>(
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"2px 0"}}>
         <span style={{color:"#888"}}>{sign} {label}</span>
@@ -327,6 +328,7 @@ export default function AdminApp(){
           <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.05)"}}>
             <div style={{background:"rgba(15,26,46,0.5)",borderRadius:6,padding:"8px 10px",marginBottom:8}}>
               {row("Prezzo Lordo",gross,"+")}
+              {row("Cleaning Fee",cleaning,"+")}
               {row("Extra Fee",extra,"+")}
               {row("Sconto",discount,"−")}
               {row("Tassa Soggiorno",touristTax,"+")}
@@ -576,25 +578,25 @@ export default function AdminApp(){
               <label style={LS}>NOME OSPITE *<input value={bkForm.guestName} placeholder="Nome e Cognome" onChange={e=>updBk({guestName:e.target.value})} style={IS}/></label>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>CANALE<select value={bkForm.channel} onChange={e=>updBk({channel:e.target.value})} style={IS}>{CHANNELS.map(c=><option key={c}>{c}</option>)}</select></label>
-                <label style={LS}>OSPITI<input type="number" value={bkForm.guests} min="1" max="12" onChange={e=>updBk({guests:parseInt(e.target.value)||1})} style={IS}/></label>
+                <label style={LS}>OSPITI<input type="number" value={bkForm.guests} min="1" max="12" onChange={e=>updBk({guests:parseInt(e.target.value)||1})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8}}>
-                <label style={LS}>PREZZO LORDO €<input type="number" value={bkForm.grossPrice} min="0" step="10" onChange={e=>updBk({grossPrice:parseFloat(e.target.value)||0})} style={IS}/></label>
-                <label style={LS}>CLEANING €<input type="number" value={bkForm.cleaningFee} min="0" onChange={e=>updBk({cleaningFee:parseFloat(e.target.value)||0})} style={IS}/></label>
+                <label style={LS}>PREZZO LORDO €<input type="number" value={bkForm.grossPrice} min="0" step="10" onChange={e=>updBk({grossPrice:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>CLEANING €<input type="number" value={bkForm.cleaningFee} min="0" onChange={e=>updBk({cleaningFee:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                <label style={LS}>EXTRA €<input type="number" value={bkForm.extraFee} min="0" onChange={e=>updBk({extraFee:parseFloat(e.target.value)||0})} style={IS}/></label>
-                <label style={LS}>SCONTO €<input type="number" value={bkForm.discount} min="0" onChange={e=>updBk({discount:parseFloat(e.target.value)||0})} style={IS}/></label>
+                <label style={LS}>EXTRA €<input type="number" value={bkForm.extraFee} min="0" onChange={e=>updBk({extraFee:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/></label>
+                <label style={LS}>SCONTO €<input type="number" value={bkForm.discount} min="0" onChange={e=>updBk({discount:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <label style={LS}>TASSA SOGGIORNO € <span style={{opacity:0.6}}>(auto: notti × ospiti × €2)</span>
-                <input type="number" value={bkForm.touristTax} min="0" onChange={e=>updBk({touristTax:parseFloat(e.target.value)||0})} style={IS}/>
+                <input type="number" value={bkForm.touristTax} min="0" onChange={e=>updBk({touristTax:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/>
               </label>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>COMMISSIONE € <span style={{opacity:0.6}}>({bkForm.grossPrice>0?((bkForm.commissionEur/bkForm.grossPrice)*100).toFixed(1):"0.0"}%)</span>
-                  <input type="number" value={bkForm.commissionEur} min="0" step="0.01" onChange={e=>updBk({commissionEur:parseFloat(e.target.value)||0})} style={IS}/>
+                  <input type="number" value={bkForm.commissionEur} min="0" step="0.01" onChange={e=>updBk({commissionEur:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/>
                 </label>
                 <label style={LS}>CEDOLARE SECCA € <span style={{opacity:0.6}}>({(bkForm.grossPrice+bkForm.extraFee-bkForm.discount)>0?((bkForm.cedolareEur/(bkForm.grossPrice+bkForm.extraFee-bkForm.discount))*100).toFixed(1):"0.0"}%)</span>
-                  <input type="number" value={bkForm.cedolareEur} min="0" step="0.01" onChange={e=>updBk({cedolareEur:parseFloat(e.target.value)||0})} style={IS}/>
+                  <input type="number" value={bkForm.cedolareEur} min="0" step="0.01" onChange={e=>updBk({cedolareEur:parseFloat(e.target.value)||0})} onFocus={e=>e.target.select()} style={IS}/>
                 </label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -603,7 +605,7 @@ export default function AdminApp(){
               </div>
               <label style={LS}>NOTE<input value={bkForm.notes} placeholder="Note opzionali" onChange={e=>updBk({notes:e.target.value})} style={IS}/></label>
               {bkForm.checkIn&&bkForm.checkOut&&bkForm.grossPrice>0&&(()=>{
-                const {gross,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net}=calcNet(bkForm);
+                const {gross,cleaning,extra,discount,touristTax,commEur,commPct,cedolareEur,cedolarePct,net}=calcNet(bkForm);
                 const n=nC(bkForm.checkIn,bkForm.checkOut);
                 const frow=(label,val,sign)=>(
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"1px 0"}}>
@@ -613,6 +615,7 @@ export default function AdminApp(){
                 return(<div style={{background:"rgba(201,169,110,0.06)",borderRadius:7,padding:"9px 11px",border:"1px solid rgba(201,169,110,0.1)"}}>
                   <div style={{fontSize:10,color:"#C9A96E",marginBottom:5,opacity:0.8}}>{n} notti · €{n>0?Math.round(gross/n):0}/notte</div>
                   {frow("Prezzo Lordo",gross,"+")}
+                  {frow("Cleaning Fee",cleaning,"+")}
                   {frow("Extra Fee",extra,"+")}
                   {frow("Sconto",discount,"−")}
                   {frow("Tassa Soggiorno",touristTax,"+")}
@@ -655,7 +658,7 @@ export default function AdminApp(){
             <div style={{display:"grid",gap:8}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>DATA *<input type="date" value={coForm.date} onChange={e=>setCoForm({...coForm,date:e.target.value})} style={IS}/></label>
-                <label style={LS}>IMPORTO € *<input type="number" value={coForm.amount} min="0" step="1" onChange={e=>setCoForm({...coForm,amount:e.target.value})} style={IS}/></label>
+                <label style={LS}>IMPORTO € *<input type="number" value={coForm.amount} min="0" step="1" onChange={e=>setCoForm({...coForm,amount:e.target.value})} onFocus={e=>e.target.select()} style={IS}/></label>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <label style={LS}>CATEGORIA<select value={coForm.category} onChange={e=>setCoForm({...coForm,category:e.target.value})} style={IS}>{COST_CATS.map(c=><option key={c}>{c}</option>)}</select></label>
